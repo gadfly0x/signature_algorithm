@@ -3,4 +3,4 @@
 
 
 - [x] 自如APP
-- [ ] 小红书APP(只实现率sign算法，未实现shield算法)
+- [ ] 小红书APP(只实现了sign算法，未实现shield算法)
