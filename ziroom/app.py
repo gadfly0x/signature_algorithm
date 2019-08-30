@@ -1,6 +1,4 @@
-import json
 import binascii
-import requests
 from pyDes import des, CBC, PAD_PKCS5
 
 
@@ -32,7 +30,9 @@ class ZiRoom:
 
 
 if __name__ == '__main__':
-    # 以列表页为例
+    import requests
+    import json
+    # 以搜索接口为例
     url = "https://ztoread.ziroom.com/phoenix/v7/room/list.json"
     headers = {
         "Content-Type": "application/json"
