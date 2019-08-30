@@ -1,1 +1,1 @@
-from signature_algorithm.xiaohongshu import miniprogram
+from signature_algorithm.xiaohongshu import app
