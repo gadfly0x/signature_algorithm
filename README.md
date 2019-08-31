@@ -18,5 +18,14 @@
     
     起始版本：1.20.0
 
+## 请杯咖啡 ☕
+如果此项目给了你帮助，可以请我喝杯咖啡哦。如果你有想要的app、小程序、网站这里没有，可以提issue。
+![image](https://raw.githubusercontent.com/gadfly0x/coffee/master/WeChat.JPG)
+
+
+![image](https://raw.githubusercontent.com/gadfly0x/coffee/master/Alipay.JPG)
+
+
+
 ## 免责声明
 本仓库所有内容仅供技术交流，请勿用于商业及非法用途，因此产生任何的法律纠纷均与本人无关。
