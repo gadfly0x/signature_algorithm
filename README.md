@@ -18,11 +18,6 @@
     
     起始版本：1.20.0
 
-## 请杯咖啡 ☕
-如果此项目给了你帮助，可以请我喝杯咖啡哦。如果你有想要的app、小程序、网站这里没有，可以提issue。
-
-![image](https://raw.githubusercontent.com/gadfly0x/coffee/master/pay.jpg)
-
 
 
 ## 免责声明
