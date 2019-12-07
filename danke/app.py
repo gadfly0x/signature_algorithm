@@ -14,10 +14,10 @@ def sign_with_query_items(data):
     # md5
     md5 = hashlib.md5()
     md5.update(pre_str.encode())
-    salt = md5.hexdigest()
+    sign = md5.hexdigest()
     # 转成大写
-    salt = salt.upper()
-    return salt
+    sign = sign.upper()
+    return sign
 
 
 if __name__ == '__main__':
