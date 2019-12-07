@@ -33,7 +33,7 @@
 
 终止日期：验证算法失效的日期，可能比真正失效的日期晚。
 
-- [x] **bangkokair(曼谷航空)**
+- [x] **bangkokair(曼谷航空)** [请求详解](https://github.com/gadfly0x/signature_algorithm/wiki/bangkokair%E6%9B%BC%E8%B0%B7%E8%88%AA%E7%A9%BA)
 
     起始版本：2019.12.07
 
