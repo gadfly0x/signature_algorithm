@@ -1,5 +1,6 @@
 import binascii
-from pyDes import des, CBC, PAD_PKCS5
+from Crypto.Cipher import DES
+from Crypto.Util.Padding import unpad, pad
 
 
 class ZiRoom:
@@ -13,9 +14,9 @@ class ZiRoom:
         :param content: 原始字符串
         :return: 加密后字符串，16进制
         """
-        k = des(cls.secret_key, CBC, cls.iv, pad=None, padmode=PAD_PKCS5)
-        en = k.encrypt(content, padmode=PAD_PKCS5)
-        return binascii.b2a_hex(en)
+        cipher = DES.new(cls.secret_key, DES.MODE_CBC, cls.iv)
+        encrypted_content = cipher.encrypt(pad(content, DES.block_size))
+        return binascii.b2a_hex(encrypted_content)
 
     @classmethod
     def des_decrypt(cls, content):
@@ -24,9 +25,9 @@ class ZiRoom:
         :param content: 加密后的字符串，16进制
         :return:  解密后的字符串
         """
-        k = des(cls.secret_key, CBC, cls.iv, pad=None, padmode=PAD_PKCS5)
-        de = k.decrypt(binascii.a2b_hex(content), padmode=PAD_PKCS5)
-        return de
+        cipher = DES.new(cls.secret_key, DES.MODE_CBC, cls.iv)
+        decrypted_content = unpad(cipher.decrypt(binascii.a2b_hex(content)), DES.block_size)
+        return decrypted_content
 
 
 if __name__ == '__main__':
