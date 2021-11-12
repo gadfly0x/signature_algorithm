@@ -38,7 +38,7 @@ if __name__ == '__main__':
     headers = {
         "Content-Type": "application/json"
     }
-    data = {'size': 10, 'suggestion_value': '青年路', 'suggestion_type': 3, 'uid': '0', 'city_code': '110000', 'page': 1}
+    data = {'size': 10, 'suggestion_value': '青年路', 'suggestion_type': 3, 'uid': '0', 'city_code': '110000', 'page': 2}
     # 加密请求参数
     data = ZiRoom.des_encrypt(json.dumps(data))
     # 发送请求
