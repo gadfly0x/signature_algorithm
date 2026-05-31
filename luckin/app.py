@@ -1,44 +1,61 @@
+"""
+瑞幸咖啡 App API 加解密模块。
+
+使用 AES-ECB 模式进行加解密，密钥从 iOS 逆向获得。
+注意：sign 算法尚未实现。
+"""
+
 import base64
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 
 
 class LuckIn:
-    secret_key = b'bmk6hcs3FKXUdsZG'  # 密钥
+    """瑞幸咖啡 AES-ECB 加解密工具类。
+
+    使用 16 字节密钥进行 AES-ECB 加解密，
+    密文采用 URL-safe base64 编码。
+    """
+
+    secret_key = b'bmk6hcs3FKXUdsZG'
 
     @classmethod
-    def encrypt(cls, text):
+    def encrypt(cls, text: str) -> str:
+        """AES-ECB 加密。
+
+        Args:
+            text: 明文字符串
+
+        Returns:
+            URL-safe base64 编码的密文字符串
         """
-        DES 加密
-        :param text: 待加密字符串
-        :return: 加密后字符串
-        """
-        # 填充
+        # PKCS7 填充
         text = pad(text.encode(), AES.block_size)
-        # AES初始化
+        # AES-ECB 加密
         cipher = AES.new(cls.secret_key, AES.MODE_ECB)
-        # AES加密
         encrypted_text = cipher.encrypt(text)
-        # bytes转换成编码
+        # URL-safe base64 编码
         encrypted_text = base64.urlsafe_b64encode(encrypted_text).decode(encoding='utf-8')
         return encrypted_text
 
     @classmethod
-    def decrypt(cls, encrypted_text):
+    def decrypt(cls, encrypted_text: str) -> str:
+        """AES-ECB 解密。
+
+        Args:
+            encrypted_text: URL-safe base64 编码的密文
+
+        Returns:
+            解密后的明文字符串
         """
-        DES 解密
-        :param encrypted_text: 待解密的字符串
-        :return:  解密后的字符串
-        """
-        # "url safe"格式base64转bytes
+        # URL-safe base64 解码
         base64_decrypted = base64.urlsafe_b64decode(encrypted_text)
-        # AES初始化
+        # AES-ECB 解密
         aes = AES.new(cls.secret_key, AES.MODE_ECB)
-        # AES解密
         decrypted_text = aes.decrypt(base64_decrypted)
-        # 去掉填充
+        # 去掉 PKCS7 填充
         decrypted_text = unpad(decrypted_text, AES.block_size)
-        # bytes转字符串
+        # bytes 转字符串
         decrypted_text = decrypted_text.decode(encoding='utf-8')
         return decrypted_text
 
@@ -49,4 +66,3 @@ if __name__ == '__main__':
     print(decrypted_text)
     encrypted_text = LuckIn.encrypt(decrypted_text)
     print(encrypted_text)
-
