@@ -1,3 +1,19 @@
+"""
+曼谷航空 (Bangkok Airways) 网站反爬签名模块。
+
+该网站使用 Distil Networks 反爬方案：通过 JS 脚本生成 proof-of-work 签名，
+需要在 Python 中执行 JS 代码来完成客户端指纹验证和签名的计算。
+
+工作流程：
+1. 提交订票请求 → booking
+2. 从返回的 HTML 提取 PGxxx.js 文件名 → get_pg_js_name
+3. 执行 check_client JS (qlSUmvhsKL.js) 做客户端指纹验证
+4. 请求 PGxxx.js 获取 PID → get_pid
+5. 执行 proof JS (PGxxx.js) 获取 cookie → get_cookies
+6. 重新提交订票请求 → search
+7. 解析航班数据 → search_parse
+"""
+
 import os
 import re
 import json
@@ -6,35 +22,57 @@ import random
 import requests
 
 
-def get_random_str(length=64, chars='0123456789abcdef'):
+def get_random_str(length: int = 64, chars: str = '0123456789abcdef') -> str:
+    """生成指定长度的随机十六进制字符串，用于模拟浏览器指纹。"""
     return ''.join(random.choice(chars) for _ in range(length))
 
 
 class RequestError(Exception):
+    """曼谷航空 API 请求异常。"""
     pass
 
 
-class Bangkokair():
-    default_user_agent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)"
+class Bangkokair:
+    """曼谷航空反爬签名客户端。
 
-    def __init__(self, request_params, **kwargs):
+    模拟浏览器环境，执行网站的 JS 脚本生成 proof-of-work 签名，
+    完成订票流程中的各步骤，最终获取航班和价格信息。
+
+    示例用法:
+        params = {
+            "B_LOCATION": "CNX",     # 出发机场
+            "E_LOCATION": "BKK",     # 到达机场
+            "B_DATE": "201912150000", # 出发日期
+            "ADULTS": "1",
+            ...
+        }
+        b = Bangkokair(params)
+        b.main()
+    """
+
+    default_user_agent = (
+        "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)"
+    )
+
+    def __init__(self, request_params: dict, **kwargs):
         self.base_path = os.path.dirname(os.path.abspath(__file__))
         self.common_data = {
             'canvas_img': get_random_str(length=40),
             'webGL_img': get_random_str(length=40),
-            'PG_JS_name': '',  # PGxxx文件名
-            'PID': '',
-            'booking_data': {},
-            'html': '',
+            'PG_JS_name': '',       # PGxxx.js 文件名，从 HTML 中解析
+            'PID': '',              # 页面 ID
+            'booking_data': {},     # 初始订票请求的返回数据
+            'html': '',             # 搜索结果页面 HTML
             'GMT_FORMAT': '%b %d, %Y %I:%M:%S %p',
         }
-        # 初始化请求
+        # 初始化 HTTP 会话
         self.session = requests.session()
         self.session.proxies = kwargs.get('proxies', {})
         self.user_agent = kwargs.get('user_agent', self.default_user_agent)
         self.request_params = request_params
 
     def main(self):
+        """执行完整的订票查询流程。"""
         self.booking()
         self.get_pg_js_name()
         self.check_client()
@@ -44,14 +82,20 @@ class Bangkokair():
         self.search_parse()
 
     def booking(self):
+        """步骤 1：提交初始订票请求，获取后续需要的 token 和 URL。"""
         url = "https://www.bangkokair.com/AdTripFlow/booking"
         method = "POST"
         rst = self.session.request(method, url, data=self.request_params)
         if rst.status_code != 200:
-            raise RequestError('booking请求失败:%s' % rst.status_code)
+            raise RequestError('booking 请求失败: %s' % rst.status_code)
         self.common_data['booking_data'] = rst.json()
 
     def get_pg_js_name(self):
+        """步骤 2：从返回 HTML 中提取 PGxxx.js 文件名。
+
+        PGxxx.js 是 Distil Networks 的指纹脚本，
+        每请求一次文件名都会变化。
+        """
         booking_data = self.common_data['booking_data']
         url = booking_data['url']
         method = "POST"
@@ -68,11 +112,17 @@ class Bangkokair():
         }
         rst = self.session.request(method, url, headers=headers, data=data)
         if rst.status_code != 200:
-            raise RequestError('获取PGxxx.js请求失败:%s' % rst.status_code)
+            raise RequestError('获取 PGxxx.js 失败: %s' % rst.status_code)
+        # 从 HTML 中正则匹配 PGxxxx.js 文件名
         patt = r'<script type="text/javascript" src="/(PG\w+.js)"'
         self.common_data['PG_JS_name'] = re.findall(patt, rst.text)[0]
 
     def check_client(self):
+        """步骤 3：执行 qlSUmvhsKL.js 做客户端环境校验。
+
+        构造模拟浏览器指纹（canvas、webGL、字体、插件等），
+        将指纹对象传入 JS proof 函数生成签名，提交给服务器验证。
+        """
         interrogation = {
             "userAgent": self.user_agent,
             "language": "en-US",
@@ -228,9 +278,13 @@ class Bangkokair():
         }
         rst = self.session.request(**kwargs)
         if rst.status_code != 200:
-            raise RequestError('qlSUmvhsKL请求失败:%s' % rst.status_code)
+            raise RequestError('qlSUmvhsKL 请求失败: %s' % rst.status_code)
 
     def get_pid(self):
+        """步骤 4：访问 PGxxx.js 并从页面中提取 PID。
+
+        PID 用于后续 cookie 获取步骤的鉴权参数。
+        """
         url = "https://flightbook.bangkokair.com/%s" % self.common_data['PG_JS_name']
         headers = {
             "content-type": "application/x-www-form-urlencoded",
@@ -238,12 +292,17 @@ class Bangkokair():
         }
         rst = self.session.request("GET", url, headers=headers)
         if rst.status_code != 200:
-            raise RequestError('PID获取失败:%s' % rst.status_code)
-        # 解析PID
+            raise RequestError('PID 获取失败: %s' % rst.status_code)
+        # 从 JavaScript URL 中解析 PID 参数
         patt = r'"/PG[a-z]+.js\?PID=([A-Z0-9-]+)"'
         self.common_data['PID'] = re.findall(patt, rst.text)[0]
 
     def get_cookies(self):
+        """步骤 5：执行 PGxxx.js 的 proof 函数获取签名 cookie。
+
+        重新构造一份浏览器指纹（fp2），调用 JS proof 函数生成签名，
+        服务器验证通过后会在响应中 Set-Cookie。
+        """
         url = "https://flightbook.bangkokair.com/%s" % self.common_data['PG_JS_name']
         method = "POST"
         headers = {
@@ -260,6 +319,7 @@ class Bangkokair():
         params = {
             "PID": self.common_data['PID'],
         }
+        # 随机生成设备 ID，模拟多个音频/视频设备
         groupId = get_random_str()
         groupId2 = get_random_str()
         p = {
@@ -467,9 +527,10 @@ class Bangkokair():
         }
         rst = self.session.request(method, url, headers=headers, params=params, data=data)
         if rst.status_code != 200:
-            raise RequestError('获取COOKIE失败:%s' % rst.status_code)
+            raise RequestError('获取 Cookie 失败: %s' % rst.status_code)
 
     def search(self):
+        """步骤 6：带上 cookie 重新提交订票请求，获取航班搜索结果。"""
         booking_data = self.common_data['booking_data']
         url = self.common_data['booking_data']['url']
         method = "POST"
@@ -486,10 +547,16 @@ class Bangkokair():
         }
         rst = self.session.request(method, url, headers=headers, data=data)
         if rst.status_code != 200:
-            raise RequestError('search失败:%s' % rst.status_code)
+            raise RequestError('search 请求失败: %s' % rst.status_code)
         self.common_data['html'] = rst.content.decode()
 
     def search_parse(self):
+        """步骤 7：解析搜索结果，提取航班和价格信息。
+
+        从 HTML 中正则提取 pageProvider 配置 JSON，
+        解析出 proposedFlightsGroup（航班信息）和
+        recommendationList（价格信息）。
+        """
         patt = r'plnextv2.utils.pageProvider.PlnextPageProvider.init\({.*?config : (.*?), pageEngine : pageEngine'
         rst = re.findall(patt, self.common_data['html'], re.DOTALL)
         rst = rst[0]
@@ -499,7 +566,7 @@ class Bangkokair():
         proposedFlightsGroup = rst['pageDefinitionConfig']['pageData']['business']['Availability']['proposedBounds'][0][
             'proposedFlightsGroup']
 
-        # 航班号 起飞时间 到达时间 飞行时间 等
+        # 航班号、起飞时间、到达时间、飞行时间等
         print(proposedFlightsGroup)
         # 价格信息
         print(rst['pageDefinitionConfig']['pageData']['business']['Availability']['recommendationList'])
@@ -515,13 +582,13 @@ if __name__ == "__main__":
         "PROMO_ID": "",
         "PROMO_CODE": "",
         "CC_BIN": "",
-        "B_LOCATION": "CNX",  # 出发机场
-        "E_LOCATION": "BKK",  # 到达机场
-        "B_DATE": "201912150000",  # 出发日期
+        "B_LOCATION": "CNX",          # 出发机场代码
+        "E_LOCATION": "BKK",          # 到达机场代码
+        "B_DATE": "201912150000",     # 出发日期 (YYYYMMDDHHMM)
         "E_DATE": "",
-        "ADULTS": "1",  # 成人数量
-        "CHILDS": "0",  # 儿童数量
-        "INFANTS": "0"
+        "ADULTS": "1",                # 成人数量
+        "CHILDS": "0",                # 儿童数量
+        "INFANTS": "0"                # 婴儿数量
     }
     b = Bangkokair(params)
     b.main()
